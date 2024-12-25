@@ -131,11 +131,18 @@ func (sf *paSessionFinder) enumerateAndAddSessions(sessions *[]Session) error {
 	for _, info := range reply {
 		name, ok := info.Properties["application.process.binary"]
 
+                // try out fallback properties
+                // this is required for pipewire / pipewire-pulse
 		if !ok {
-			sf.logger.Warnw("Failed to get sink input's process name",
-				"sinkInputIndex", info.SinkInputIndex)
-
-			continue
+			name, ok = info.Properties["node.name"]
+			if !ok {
+				name, ok = info.Properties["device.description"]
+				if !ok {
+					sf.logger.Warnw("Failed to get sink input's process name",
+						"sinkInputIndex", info.SinkInputIndex)
+					continue
+				}
+			}
 		}
 
 		// create the deej session object

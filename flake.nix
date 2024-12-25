@@ -18,17 +18,17 @@
           version = "0.9.10";
 
           src = pkgs.fetchFromGitHub {
-            owner = "omriharel";
-            repo = "deej";
-            rev = "9c0307b96341538ec46f18d2e9b18aaa84441175";
-            hash = "sha256-ztaVbWQiX59gPlrtvxNqJGqpMYApOKwIUvE4lS/sWVw="; # Placeholder, to be replaced with actual hash
+            owner = "bndlfm";
+            repo = "deejus";
+            rev = "90f6da8008277bc004f6fb194c088595b76e5111";
+            hash = "sha256-e3qR3e8cbC/6iArObN9V3RZPceTq1597b/fQZskeKUE=";
             };
 
-          vendorHash = "sha256-1gjFPD7YV2MTp+kyC+hsj+NThmYG3hlt6AlOzXmEKyA="; # Placeholder, to be replaced with actual hash
+          vendorHash = "sha256-1gjFPD7YV2MTp+kyC+hsj+NThmYG3hlt6AlOzXmEKyA=";
 
           nativeBuildInputs = with pkgs; [ pkg-config ];
 
-          propagatedBuildInputs = with pkgs; [ 
+          propagatedBuildInputs = with pkgs; [
             gtk3
             libappindicator-gtk3
             webkitgtk
