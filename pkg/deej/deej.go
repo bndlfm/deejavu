@@ -29,10 +29,11 @@ type Deej struct {
 	stopChannel chan bool
 	version     string
 	verbose     bool
+        configFile  string
 }
 
 // NewDeej creates a Deej instance
-func NewDeej(logger *zap.SugaredLogger, verbose bool) (*Deej, error) {
+func NewDeej(logger *zap.SugaredLogger, verbose bool, configFile string) (*Deej, error) {
 	logger = logger.Named("deej")
 
 	notifier, err := NewToastNotifier(logger)
@@ -41,11 +42,11 @@ func NewDeej(logger *zap.SugaredLogger, verbose bool) (*Deej, error) {
 		return nil, fmt.Errorf("create new ToastNotifier: %w", err)
 	}
 
-	config, err := NewConfig(logger, notifier)
-	if err != nil {
-		logger.Errorw("Failed to create Config", "error", err)
-		return nil, fmt.Errorf("create new Config: %w", err)
-	}
+        config, err := NewConfig(logger, notifier, configFile)
+        if err != nil {
+            logger.Errorw("Failed to create Config", "error", err)
+            return nil, fmt.Errorf("create new Config: %w", err)
+        }
 
 	d := &Deej{
 		logger:      logger,
@@ -53,6 +54,7 @@ func NewDeej(logger *zap.SugaredLogger, verbose bool) (*Deej, error) {
 		config:      config,
 		stopChannel: make(chan bool),
 		verbose:     verbose,
+                configFile:  configFile,
 	}
 
 	serial, err := NewSerialIO(d, logger)

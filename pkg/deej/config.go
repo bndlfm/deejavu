@@ -2,8 +2,10 @@ package deej
 
 import (
 	"fmt"
+	"os"
 	"path"
 	"strings"
+	"path/filepath"
 	"time"
 
 	"github.com/fsnotify/fsnotify"
@@ -35,13 +37,15 @@ type CanonicalConfig struct {
 
 	userConfig     *viper.Viper
 	internalConfig *viper.Viper
+
+	userConfigFilepath string
+	userConfigName     string
 }
 
 const (
-	userConfigFilepath     = "config.yaml"
 	internalConfigFilepath = "preferences.yaml"
 
-	userConfigName     = "config"
+	// userConfigName     = "config"
 	internalConfigName = "preferences"
 
 	userConfigPath = "."
@@ -69,7 +73,7 @@ var defaultSliderMapping = func() *sliderMap {
 }()
 
 // NewConfig creates a config instance for the deej object and sets up viper instances for deej's config files
-func NewConfig(logger *zap.SugaredLogger, notifier Notifier) (*CanonicalConfig, error) {
+func NewConfig(logger *zap.SugaredLogger, notifier Notifier, configFile string) (*CanonicalConfig, error) {
 	logger = logger.Named("config")
 
 	cc := &CanonicalConfig{
@@ -77,13 +81,17 @@ func NewConfig(logger *zap.SugaredLogger, notifier Notifier) (*CanonicalConfig, 
 		notifier:           notifier,
 		reloadConsumers:    []chan bool{},
 		stopWatcherChannel: make(chan bool),
+		userConfigFilepath: configFile,
+		userConfigName:     strings.TrimSuffix(configFile, filepath.Ext(configFile)),
 	}
 
 	// distinguish between the user-provided config (config.yaml) and the internal config (logs/preferences.yaml)
 	userConfig := viper.New()
-	userConfig.SetConfigName(userConfigName)
+	// userConfig.SetConfigName(cc.userConfigName)
 	userConfig.SetConfigType(configType)
-	userConfig.AddConfigPath(userConfigPath)
+	userConfig.SetConfigFile(configFile)
+
+	// userConfig.AddConfigPath(userConfigPath)
 
 	userConfig.SetDefault(configKeySliderMapping, map[string][]string{})
 	userConfig.SetDefault(configKeyInvertSliders, false)
@@ -105,25 +113,31 @@ func NewConfig(logger *zap.SugaredLogger, notifier Notifier) (*CanonicalConfig, 
 
 // Load reads deej's config files from disk and tries to parse them
 func (cc *CanonicalConfig) Load() error {
-	cc.logger.Debugw("Loading config", "path", userConfigFilepath)
+	cc.logger.Debugw("Loading config", "path", cc.userConfigFilepath)
 
 	// make sure it exists
-	if !util.FileExists(userConfigFilepath) {
-		cc.logger.Warnw("Config file not found", "path", userConfigFilepath)
+	if !util.FileExists(cc.userConfigFilepath) {
+		cc.logger.Warnw("Config file not found", "path", cc.userConfigFilepath)
 		cc.notifier.Notify("Can't find configuration!",
-			fmt.Sprintf("%s must be in the same directory as deej. Please re-launch", userConfigFilepath))
+			fmt.Sprintf("%s must be in the same directory as deej. Please re-launch", cc.userConfigFilepath))
 
-		return fmt.Errorf("config file doesn't exist: %s", userConfigFilepath)
+		return fmt.Errorf("config file doesn't exist: %s", cc.userConfigFilepath)
 	}
 
-	// load the user config
-	if err := cc.userConfig.ReadInConfig(); err != nil {
+	configFile, err := os.Open(cc.userConfigFilepath)
+	if err != nil {
+		cc.logger.Warnw("Failed to open config file", "error", err)
+		return fmt.Errorf("open config file: %w", err)
+	}
+	defer configFile.Close()
+
+	if err := cc.userConfig.ReadConfig(configFile); err != nil {
 		cc.logger.Warnw("Viper failed to read user config", "error", err)
 
 		// if the error is yaml-format-related, show a sensible error. otherwise, show 'em to the logs
 		if strings.Contains(err.Error(), "yaml:") {
 			cc.notifier.Notify("Invalid configuration!",
-				fmt.Sprintf("Please make sure %s is in a valid YAML format.", userConfigFilepath))
+				fmt.Sprintf("Please make sure %s is in a valid YAML format.", cc.userConfigFilepath))
 		} else {
 			cc.notifier.Notify("Error loading configuration!", "Please check deej's logs for more details.")
 		}
@@ -162,7 +176,7 @@ func (cc *CanonicalConfig) SubscribeToChanges() chan bool {
 // WatchConfigFileChanges starts watching for configuration file changes
 // and attempts reloading the config when they happen
 func (cc *CanonicalConfig) WatchConfigFileChanges() {
-	cc.logger.Debugw("Starting to watch user config file for changes", "path", userConfigFilepath)
+	cc.logger.Debugw("Starting to watch user config file for changes", "path", cc.userConfigFilepath)
 
 	const (
 		minTimeBetweenReloadAttempts = time.Millisecond * 500
