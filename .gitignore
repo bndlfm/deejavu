@@ -1,3 +1,5 @@
+*.lock
+result
 venv/
 *.pyc
 *.db

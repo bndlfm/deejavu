@@ -26,13 +26,6 @@
 
           vendorHash = "sha256-1gjFPD7YV2MTp+kyC+hsj+NThmYG3hlt6AlOzXmEKyA="; # Placeholder, to be replaced with actual hash
 
-          patches = [
-            ./config.go.patch
-            ./deej.go.patch
-            ./main.go.patch
-            ./tray.go.patch
-          ];
-
           nativeBuildInputs = with pkgs; [ pkg-config ];
 
           propagatedBuildInputs = with pkgs; [ 
